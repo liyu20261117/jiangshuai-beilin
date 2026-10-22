@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -22,9 +22,12 @@
       <a href="names.html" class="active">英名长存</a>
       <a href="visit.html">参观指南</a>
     </nav>
-    <button class="sound-btn" id="soundBtn" type="button" aria-label="开启或关闭背景音乐" aria-pressed="true">
-      <span class="bars"><i></i><i></i><i></i></span>
-    </button>
+    <div class="sound-wrap">
+      <input class="vol" id="volRange" type="range" min="0" max="100" step="1" value="50" aria-label="背景音乐音量">
+      <button class="sound-btn" id="soundBtn" type="button" aria-label="开启或关闭背景音乐" aria-pressed="true">
+        <span class="bars"><i></i><i></i><i></i></span>
+      </button>
+    </div>
     <button class="menu-btn" id="menuBtn" type="button" aria-label="打开菜单" aria-expanded="false"><span></span><span></span></button>
   </div>
 </header>
@@ -180,4 +183,5 @@
 <script src="assets/js/main.js"></script>
 </body>
 </html>
+
 

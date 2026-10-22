@@ -1,20 +1,29 @@
-﻿/* ============================================================
-   声音系统：点击音效 / 悬停音效 / 背景音乐
-   音源：Mixkit 免费素材（详见 visit.html 资料来源）
+/* ============================================================
+   声音系统：点击音效 / 悬停音效 / 背景音乐 + 音量调节
    - 浏览器禁止自动播放，首次点击或按键后才会响起
-   - 右下角按钮可随时开关，状态记录在浏览器本地
+   - 右上角圆形按钮开关音乐，旁边的滑杆调节音量
+   - 音量与静音状态记录在浏览器本地，换页续播
    ============================================================ */
 (function () {
   'use strict';
 
   var BASE = 'assets/audio/';
-  var STORE_KEY = 'bzl-sound-muted';
+  var MUTE_KEY = 'bzl-sound-muted';
+  var VOL_KEY = 'bzl-volume';
+  var DEFAULT_VOL = 0.55;
+
   var muted = false;
-  try { muted = localStorage.getItem(STORE_KEY) === '1'; } catch (e) {}
+  var volume = DEFAULT_VOL;
+  try {
+    muted = localStorage.getItem(MUTE_KEY) === '1';
+    var v = parseFloat(localStorage.getItem(VOL_KEY));
+    if (!isNaN(v)) volume = Math.max(0, Math.min(1, v));
+  } catch (e) {}
 
   var sfx = {};
   var bgm = null;
   var bgmStarted = false;
+  var startedOnce = false;
   var toastTimer = null;
 
   function fadeTo(audio, target, ms) {
@@ -69,6 +78,11 @@
     btn.setAttribute('title', muted ? '开启背景音乐' : '关闭背景音乐');
   }
 
+  function updateSlider() {
+    var r = document.getElementById('volRange');
+    if (r) r.value = String(Math.round(volume * 100));
+  }
+
   function showToast(text) {
     var t = document.getElementById('soundToast');
     if (!t) return;
@@ -94,13 +108,16 @@
     ensureBgm();
     var p = bgm.play();
     var begin = function () {
-      var t = savedTime();
-      if (t > 0 && (!bgm.duration || t < bgm.duration - 3)) {
-        try { bgm.currentTime = t; } catch (e) {}
+      if (!startedOnce) {
+        startedOnce = true;
+        var t = savedTime();
+        if (t > 0 && (!bgm.duration || t < bgm.duration - 3)) {
+          try { bgm.currentTime = t; } catch (e) {}
+        }
       }
-      fadeTo(bgm, 0.34, 2600);
+      fadeTo(bgm, volume, 2200);
       updateButton();
-      showToast('背景音乐已开启 · 右上角按钮可关闭');
+      showToast('背景音乐已开启 · 右上角可调节音量');
     };
     if (p && p.then) {
       p.then(begin).catch(function () {
@@ -115,17 +132,25 @@
 
   function stopBgm() {
     if (!bgm) return;
-    fadeTo(bgm, 0, 600);
+    fadeTo(bgm, 0, 500);
     setTimeout(function () {
       if (bgm && muted) bgm.pause();
-    }, 650);
+    }, 550);
     bgmStarted = false;
     updateButton();
   }
 
+  function setVolume(v, silent) {
+    volume = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem(VOL_KEY, String(volume)); } catch (e) {}
+    updateSlider();
+    if (bgm && bgmStarted && !muted) bgm.volume = volume;
+    if (!silent) showToast('音量 ' + Math.round(volume * 100) + '%');
+  }
+
   function toggle() {
     muted = !muted;
-    try { localStorage.setItem(STORE_KEY, muted ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
     if (muted) {
       stopBgm();
       showToast('已静音');
@@ -141,6 +166,17 @@
   function bind() {
     var btn = document.getElementById('soundBtn');
     if (btn) btn.addEventListener('click', function (e) { e.preventDefault(); toggle(); });
+
+    var slider = document.getElementById('volRange');
+    if (slider) {
+      slider.addEventListener('input', function () {
+        setVolume(parseFloat(this.value) / 100, true);
+      });
+      slider.addEventListener('change', function () {
+        setVolume(parseFloat(this.value) / 100, false);
+      });
+      slider.addEventListener('click', function (e) { e.stopPropagation(); });
+    }
 
     document.addEventListener('click', function (e) {
       var t = e.target.closest ? e.target.closest('a, button, .card, .name-chip, .video-card, .stat') : null;
@@ -176,8 +212,8 @@
   function init() {
     preload();
     bind();
+    updateSlider();
     updateButton();
-    if (muted) updateButton();
   }
 
   if (document.readyState === 'loading') {
@@ -186,6 +222,10 @@
     init();
   }
 
-  window.SiteAudio = { toggle: toggle, isMuted: function () { return muted; } };
+  window.SiteAudio = {
+    toggle: toggle,
+    isMuted: function () { return muted; },
+    volume: function () { return volume; },
+    setVolume: setVolume
+  };
 })();
-
